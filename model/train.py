@@ -3,6 +3,23 @@ import pandas as pd
 from sklearn import model_selection
 from sklearn import preprocessing
 from sklearn import tree
+from feature_engine import discretisation
+from sklearn import tree
+from sklearn import metrics
+from sklearn import linear_model
+from sklearn import naive_bayes
+from sklearn import ensemble
+from sklearn import pipeline
+import matplotlib.pyplot as plt
+from sklearn import set_config
+from sklearn.compose import ColumnTransformer
+import numpy as np
+import mlflow
+
+set_config(transform_output="pandas")
+
+mlflow.set_tracking_uri("http://127.0.0.1:5050/")
+mlflow.set_experiment(experiment_id=1)
 
 df = pd.read_csv("../data/loan_data.csv")
 df.head()
@@ -22,18 +39,21 @@ print("Taxa variavel resposta Treino: ", y_train.mean())
 print("Taxa variavel resposta Teste: ", y_test.mean())
 
 # %% EXPLORE - transforming text values in numbers
-encoder = preprocessing.OrdinalEncoder()
-text_columns = X_train.select_dtypes(include=['object']).columns
+encoder = preprocessing.OrdinalEncoder(handle_unknown='use_encoded_value',
+                                       unknown_value=np.nan)
+
+X_train_temp = X_train.copy()
+
+text_columns = X_train_temp.select_dtypes(include=['object']).columns
 text_columns
-X_train[text_columns] = encoder.fit_transform(X_train[text_columns])
-X_test[text_columns] = encoder.fit_transform(X_test[text_columns])
+X_train_temp[text_columns] = encoder.fit_transform(X_train_temp[text_columns])
 
 # %% deciding what is the most important features for target
 tree_feat = tree.DecisionTreeClassifier(random_state=42)
-tree_feat.fit(X_train, y_train)
+tree_feat.fit(X_train_temp, y_train)
 
 feature_importances = (pd.Series(tree_feat.feature_importances_,
-index=X_train.columns).sort_values(ascending=False).reset_index())
+index=X_train_temp.columns).sort_values(ascending=False).reset_index())
 feature_importances['acum.'] = feature_importances[0].cumsum()
 feature_importances[feature_importances['acum.'] < 0.96]
 
@@ -41,3 +61,98 @@ best_features = (feature_importances[feature_importances['acum.'] < 0.96]['index
 best_features
 
 # %%
+text_columns_in_best = [col for col in best_features if col in X_train.select_dtypes(include=['object', 'category']).columns]
+tree_discretisation = discretisation.DecisionTreeDiscretiser(
+    variables=best_features,
+    regression=False,
+    bin_output='bin_number',
+    cv = 3
+)
+
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('cat', encoder, text_columns_in_best)
+    ],
+    remainder='passthrough',
+    verbose_feature_names_out=False
+)
+
+# model = linear_model.LogisticRegression(
+#     penalty=None,
+#     random_state=42,
+#     max_iter=10000
+# )
+
+# model = naive_bayes.BernoulliNB()
+
+# model = ensemble.AdaBoostClassifier(
+#     random_state=42,
+#     n_estimators=800,
+#     learning_rate=0.01
+# )
+
+#best model
+model = ensemble.RandomForestClassifier(
+    random_state=42,
+    n_jobs=2,
+)
+
+params = {
+    "min_samples_leaf":[50, 60, 80, 70, 100],
+    "n_estimators":[700, 600, 500, 1000, 1300],
+    "criterion": ['gini', 'entropy', 'log_loss'],
+}
+
+grid = model_selection.GridSearchCV(
+    model, params, cv=3, scoring='roc_auc',
+    verbose=4)
+
+model_pipeline = pipeline.Pipeline(
+    steps=[
+        ('Preprocessor', preprocessor),
+        ('Discretiser', tree_discretisation),
+        ('Grid', grid)
+    ]
+)
+
+with mlflow.start_run(run_name=model.__str__()):
+    mlflow.sklearn.autolog()
+    model_pipeline.fit(X_train[best_features], y_train)
+
+    # ASSESS
+    y_train_predict = model_pipeline.predict(X_train[best_features])
+    y_train_proba = model_pipeline.predict_proba(X_train[best_features])[:,1]
+
+    acc_train = metrics.accuracy_score(y_train, y_train_predict)
+    auc_train = metrics.roc_auc_score(y_train, y_train_proba)
+    roc_train = metrics.roc_curve(y_train, y_train_proba)
+    print("Train accuracy: ", acc_train)
+    print("Train AUC: ", auc_train)
+
+    # now in test base
+    y_test_predict = model_pipeline.predict(X_test[best_features])
+    y_test_proba = model_pipeline.predict_proba(X_test[best_features])[:,1]
+    acc_test = metrics.accuracy_score(y_test, y_test_predict)
+    auc_test = metrics.roc_auc_score(y_test, y_test_proba)
+    roc_test = metrics.roc_curve(y_test, y_test_proba)
+    print("Test accuracy: ", acc_test)
+    print("Test AUC: ", auc_test)
+
+    mlflow.log_metrics({
+        "acc_train":acc_train,
+        "auc_train":auc_train,
+        "acc_test":acc_test,
+        "auc_test":auc_test,
+    })
+
+# %%
+plt.figure(dpi=400)
+plt.plot(roc_train[0], roc_train[1])
+plt.plot(roc_test[0], roc_test[1])
+plt.grid(True)
+plt.title("ROC Curve")
+plt.legend([
+    f"Train: {100*auc_train:.2f}",
+    f"Test: {100*auc_test:.2f}"
+])
+plt.show()

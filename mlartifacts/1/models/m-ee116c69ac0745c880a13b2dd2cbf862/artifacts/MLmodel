@@ -1,0 +1,36 @@
+artifact_path: mlflow-artifacts:/1/models/m-ee116c69ac0745c880a13b2dd2cbf862/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.14.6
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.9.0
+    skops_trusted_types: null
+is_signature_from_type_hint: false
+mlflow_version: 3.16.0
+model_id: m-ee116c69ac0745c880a13b2dd2cbf862
+model_size_bytes: 4477
+model_uuid: m-ee116c69ac0745c880a13b2dd2cbf862
+prompts: null
+run_id: 4e6dc0bb72d54044ac201f12c997280c
+signature:
+  inputs: '[{"type": "string", "name": "previous_loan_defaults_on_file", "required":
+    true}, {"type": "double", "name": "loan_int_rate", "required": true}, {"type":
+    "double", "name": "loan_percent_income", "required": true}, {"type": "double",
+    "name": "person_income", "required": true}, {"type": "long", "name": "credit_score",
+    "required": true}, {"type": "string", "name": "person_home_ownership", "required":
+    true}, {"type": "string", "name": "loan_intent", "required": true}, {"type": "double",
+    "name": "loan_amnt", "required": true}, {"type": "double", "name": "person_age",
+    "required": true}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "int64", "shape": [-1]}}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2026-09-21 17:29:22.338754'

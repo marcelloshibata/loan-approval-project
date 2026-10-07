@@ -12,6 +12,7 @@ features = model.feature_names_in_
 # %%
 import streamlit as st
 st.title("Loan Approval Project")
+model = pd.read_pickle("app/model.pkl")
 
 age = st.number_input(label="Insert your age", format="%0.1f")
 gender = st.radio("Your Gender", options=['Male', 'Female'])
@@ -36,16 +37,28 @@ prev = st.radio(label='Indicator of previous loan defaults', options=['Yes', 'No
 
 data = {
     'person_age': age,
-    'person_gender': gender,
+    'person_gender': gender.lower(),
     'person_education': education,
     'person_income': income,
     'person_emp_exp': emp_exp,
     'person_home_ownership': home_own.replace(" ", "").upper(),
     'loan_amnt': loan_amnt,
-    'loan_intent': loan_intent,
+    'loan_intent': loan_intent.replace(" ", "").upper(),
     'loan_int_rate': loan_int_rate,
     'loan_percent_income': loan_percent_income,
     'cb_person_cred_hist_length': cb_person,
     'credit_score': credit_score,
-    'previous_loan_defaults_on_file': prev
+    'previous_loan_defaults_on_file': prev,
 }
+
+df_input = pd.DataFrame([data])
+
+if st.button("Loan Analyze"):
+    proba = model.predict_proba(df_input)[:,1][0]
+
+    if proba > 0.7:
+        st.success(f"High probability of approval! Probability: {100 * proba:.0f}%")
+    elif proba > 0.4:
+        st.warning(f"Medium probability of approval. Probability: {100 * proba:.0f}%")
+    else:
+        st.error(f"Low probability of approval. Probability: {100 * proba:.0f}%")

@@ -44,7 +44,7 @@ data = {
 
 df_input = pd.DataFrame([data])
 
-if st.button("Loan Analyze"):
+if st.button("Loan Analyze", type='primary'):
     proba = model.predict_proba(df_input)[:,1][0]
 
     if proba > 0.7:

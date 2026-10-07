@@ -147,3 +147,8 @@ st.markdown(
     "* Isto garante que a aplicação (seja em Streamlit, ou quaisquer outras aplicações web) possam enviar os dados brutos e o pipeline aplique exatamente as "
     "mesmas transformações aprendidas no treino."
 )
+
+st.markdown("## Teste o modelo")
+
+if st.button("Ir para o Modelo", type="primary", use_container_width=True):
+    st.switch_page("predict.py")

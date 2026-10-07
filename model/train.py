@@ -12,7 +12,8 @@ from sklearn import ensemble
 from sklearn import pipeline
 import matplotlib.pyplot as plt
 from sklearn import set_config
-from sklearn.compose import ColumnTransformer
+from feature_engine.encoding import OrdinalEncoder
+from feature_engine.selection import DropFeatures
 import numpy as np
 import mlflow
 
@@ -61,8 +62,6 @@ best_features = (feature_importances[feature_importances['acum.'] < 0.96]['index
 best_features
 
 # %%
-from feature_engine.encoding import OrdinalEncoder
-from feature_engine.selection import DropFeatures
 
 features_to_drop = [col for col in X_train.columns if col not in best_features]
 

@@ -1,2 +1,4 @@
-mlartifacts
+mlartifacts/
+mlartifacts/*
 mlflow.db
+*.pkl

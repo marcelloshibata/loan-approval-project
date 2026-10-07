@@ -61,20 +61,20 @@ best_features = (feature_importances[feature_importances['acum.'] < 0.96]['index
 best_features
 
 # %%
+from feature_engine.encoding import OrdinalEncoder
+from feature_engine.selection import DropFeatures
+
+features_to_drop = [col for col in X_train.columns if col not in best_features]
+
 text_columns_in_best = [col for col in best_features if col in X_train.select_dtypes(include=['object', 'category']).columns]
+encoder = OrdinalEncoder(encoding_method='arbitrary', variables=text_columns_in_best)
+
+num_columns_in_best = [col for col in best_features if col not in text_columns_in_best]
 tree_discretisation = discretisation.DecisionTreeDiscretiser(
-    variables=best_features,
+    variables=num_columns_in_best,
     regression=False,
     bin_output='bin_number',
-    cv = 3
-)
-
-preprocessor = ColumnTransformer(
-    transformers=[
-        ('cat', encoder, text_columns_in_best)
-    ],
-    remainder='passthrough',
-    verbose_feature_names_out=False
+    cv=3
 )
 
 # model = linear_model.LogisticRegression(
@@ -109,7 +109,8 @@ grid = model_selection.GridSearchCV(
 
 model_pipeline = pipeline.Pipeline(
     steps=[
-        ('Preprocessor', preprocessor),
+        ('Drop_Extra_Features', DropFeatures(features_to_drop=features_to_drop)),   
+        ('Encoder', encoder),
         ('Discretiser', tree_discretisation),
         ('Grid', grid)
     ]
@@ -117,11 +118,11 @@ model_pipeline = pipeline.Pipeline(
 
 with mlflow.start_run(run_name=model.__str__()):
     mlflow.sklearn.autolog()
-    model_pipeline.fit(X_train[best_features], y_train)
+    model_pipeline.fit(X_train, y_train)
 
     # ASSESS
-    y_train_predict = model_pipeline.predict(X_train[best_features])
-    y_train_proba = model_pipeline.predict_proba(X_train[best_features])[:,1]
+    y_train_predict = model_pipeline.predict(X_train)
+    y_train_proba = model_pipeline.predict_proba(X_train)[:,1]
 
     acc_train = metrics.accuracy_score(y_train, y_train_predict)
     auc_train = metrics.roc_auc_score(y_train, y_train_proba)
@@ -130,8 +131,8 @@ with mlflow.start_run(run_name=model.__str__()):
     print("Train AUC: ", auc_train)
 
     # now in test base
-    y_test_predict = model_pipeline.predict(X_test[best_features])
-    y_test_proba = model_pipeline.predict_proba(X_test[best_features])[:,1]
+    y_test_predict = model_pipeline.predict(X_test)
+    y_test_proba = model_pipeline.predict_proba(X_test)[:,1]
     acc_test = metrics.accuracy_score(y_test, y_test_predict)
     auc_test = metrics.roc_auc_score(y_test, y_test_proba)
     roc_test = metrics.roc_curve(y_test, y_test_proba)

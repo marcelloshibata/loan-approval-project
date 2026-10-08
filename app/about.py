@@ -1,7 +1,7 @@
 import streamlit as st
 
 if "lang" not in st.session_state:
-    st.session_state.lang = "PT"
+    st.session_state.lang = "EN"
 
 col_title, col_lang = st.columns([0.75, 0.25])
 

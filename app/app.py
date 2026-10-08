@@ -2,8 +2,8 @@
 import streamlit as st
 
 pages = {
-    "Sobre o Projeto": [
-        st.Page("about.py", title="Detalhes")
+    "About the Project": [
+        st.Page("about.py", title="Details")
     ],
     "Model": [
         st.Page("predict.py", title="Predict Loan Approval")
